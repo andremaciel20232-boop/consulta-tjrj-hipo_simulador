@@ -261,6 +261,7 @@ function Stat({k, n, label, emoji}){
 
 function Posicoes({cl, setCl}){
   const [draft, setDraft] = useState(cl==null ? '' : String(cl));
+  React.useEffect(() => { setDraft(cl==null ? '' : String(cl)); }, [cl]);
   const idx = ROWS.findIndex(r => r.cl===cl);
   const r = idx>=0 ? ROWS[idx] : null;
   const ahead = r ? ROWS.slice(0, idx) : [];
@@ -383,6 +384,7 @@ const adj = n => (n % 10) >= 6 ? 1 : 0;
 
 function Simulador({cl, setCl}){
   const [draft, setDraft] = useState(cl==null ? '' : String(cl));
+  React.useEffect(() => { setDraft(cl==null ? '' : String(cl)); }, [cl]);
   const [nom, setNom] = useState(NOM0);
   const eff = nom.map(n => n + adj(n));
   const acc = []; eff.reduce((s,n,i)=>(acc[i]=s+n, s+n), 0);
@@ -470,10 +472,10 @@ function App(){
   return (<>
     <div className="tabs">{TABS.map(([k,l]) =>
       <button key={k} className={tab===k?'on':''} onClick={()=>setTab(k)}>{l}</button>)}</div>
-    {tab==='lista' && <Lista onPick={pick} />}
-    {tab==='posicoes' && <Posicoes cl={cl} setCl={setCl} />}
-    {tab==='projecoes' && <Projecoes cl={cl} />}
-    {tab==='simulador' && <Simulador cl={cl} setCl={setCl} />}
+    <div style={{display: tab==='lista' ? 'block' : 'none'}}><Lista onPick={pick} /></div>
+    <div style={{display: tab==='posicoes' ? 'block' : 'none'}}><Posicoes cl={cl} setCl={setCl} /></div>
+    <div style={{display: tab==='projecoes' ? 'block' : 'none'}}><Projecoes cl={cl} /></div>
+    <div style={{display: tab==='simulador' ? 'block' : 'none'}}><Simulador cl={cl} setCl={setCl} /></div>
   </>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

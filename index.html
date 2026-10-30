@@ -406,7 +406,7 @@ function Simulador(){
   return (<>
     <h1>Simulador de Convocações</h1>
     <div className="sub">Cota Hipossuficiência 1ª Região<br/>Dados atualizados em 29/10/2026 · cota Hipo 1ªR</div>
-    <div className="card"><div className="band">Resultado do cenário</div><div className="in">
+    <div className="card"><div className="band">Resultado do cenário simulado</div><div className="in">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
         <div className="num navy" style={{fontSize:56,lineHeight:1}}>{TOT}</div>
         <div style={{textAlign:'right',fontSize:12,color:'#5A6B7B',lineHeight:1.45}}>nomeações simuladas<br/>alcança <b style={{color:'#1A2733'}}>{Math.round(TOT/MAXQ*100)}%</b> da fila ativa<br/>({TOT} de {MAXQ})</div>
@@ -423,12 +423,12 @@ function Simulador(){
         <div className="tile gold"><div className="k">Com 10% de desistência</div><div className="v">{REACH_D ? `roda até Cl. ${REACH_D.cl}` : '—'}</div><div className="s">{REACH_D ? REACH_D.nome : ''}</div></div>
       </div>
     </div></div>
-    <div className="card"><div className="band">Quadro de convocações realizadas · Por grupo</div>
+    <div className="card"><div className="band">Nº de convocações realizadas · (G1-G5)</div>
       <div className="grp">
         {GRUPOS.map(g => <div key={g}><b>{GCOUNT(g)}</b><small>{g}</small></div>)}
         <div className="tot"><b>{totG}</b><small>total</small></div>
       </div></div>
-    <div className="card"><div className="band">Entradas · Simular nomeações</div>
+    <div className="card"><div className="band">Simular novas convocações · (G6-G10)</div>
       {NOM0.map((_, i) => (
         <div className="nrow" key={i}>
           <div className="rl"><span className="dot" style={{background:SCOL[i]}}></span>{GLAB[i]}<small>calendário a confirmar</small></div>

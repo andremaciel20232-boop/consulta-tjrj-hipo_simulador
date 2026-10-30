@@ -148,7 +148,7 @@ const DATA = [{"cl": 1, "nome": "Paulo Cesar Pimentel Do Nascimento", "nasc": "0
 const ULT = 44;          // última posição alcançada oficialmente
 const USER_CL = 120;     // sua classificação (padrão nas abas)
 const COL = ['#1F3B57','#2E5C86','#4F7FAA','#8A6D1D','#B89A4A','#D9C58A'];
-const NOM0 = [21,20,19,17,7];
+const NOM0 = [0,0,0,0,0];   // começa zerado: cada candidato simula
 const TOTAL_GERAL = 3000;
 
 const norm = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
@@ -260,7 +260,7 @@ function Stat({k, n, label, emoji}){
 }
 
 function Posicoes({cl, setCl}){
-  const [draft, setDraft] = useState(String(cl));
+  const [draft, setDraft] = useState(cl==null ? '' : String(cl));
   const idx = ROWS.findIndex(r => r.cl===cl);
   const r = idx>=0 ? ROWS[idx] : null;
   const ahead = r ? ROWS.slice(0, idx) : [];
@@ -274,10 +274,10 @@ function Posicoes({cl, setCl}){
     <h1>Minhas Posições</h1>
     <div className="sub">Consulte qualquer classificação · cota Hipossuficiência 1ªR</div>
     <div className="pick">
-      <input type="number" min="1" max={ROWS.length} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')consult();}} />
+      <input type="number" min="1" max={ROWS.length} value={draft} placeholder="Digite sua classificação oficial" onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')consult();}} />
       <button onClick={consult}>Consultar</button>
     </div>
-    {!r && <div className="empty">Informe uma classificação entre 1 e {ROWS.length}.</div>}
+    {!r && <div className="empty">Digite sua classificação oficial (1 a {ROWS.length}) e toque em Consultar.</div>}
     {r && <>
     <div className="card"><div className="band">Posição oficial FGV</div>
       <div className="ofi"><div className="big">{r.cl}</div>
@@ -304,7 +304,7 @@ function Posicoes({cl, setCl}){
     <div className="card fila"><div className="band">Fila ativa</div>
       <div className="ofi">
         <div className="big">{r.fn!=null ? `#${r.fn}` : '—'}</div>
-        <div className="cap" style={{color:'#7C4A12'}}>{r.fn!=null ? <>de {MAXQ} na fila ativa{r.cl===USER_CL ? <> · <b>sua melhor posição</b></> : null}</> : 'Fora da fila ativa'}</div>
+        <div className="cap" style={{color:'#7C4A12'}}>{r.fn!=null ? <>de {MAXQ} na fila ativa<> · <b>sua melhor posição</b></></> : 'Fora da fila ativa'}</div>
       </div></div>
     <div className="card"><div className="band">Desempate · edital item 14</div>
       <div className="row"><span className="k">Nota final</span><span className="v">{fmt(r.nota)}</span></div>
@@ -381,7 +381,8 @@ const GRUPOS = ['G1/G2','G3','G4','G5'];
 // Arredondamento: se a casa das unidades for 6 ou mais, soma-se +1 (16→17, 26→27, 36→37…)
 const adj = n => (n % 10) >= 6 ? 1 : 0;
 
-function Simulador(){
+function Simulador({cl, setCl}){
+  const [draft, setDraft] = useState(cl==null ? '' : String(cl));
   const [nom, setNom] = useState(NOM0);
   const eff = nom.map(n => n + adj(n));
   const acc = []; eff.reduce((s,n,i)=>(acc[i]=s+n, s+n), 0);
@@ -389,9 +390,9 @@ function Simulador(){
   const DES = Math.ceil(TOT/0.9);
   const REACH = QMAP[Math.min(TOT,MAXQ)];
   const REACH_D = QMAP[Math.min(DES,MAXQ)];
-  const me = ROWS.find(x => x.cl===USER_CL);
+  const me = ROWS.find(x => x.cl===cl);
   const USERQ = me && me.fn!=null ? me.fn : null;
-  const prevIdx = USERQ!=null ? acc.findIndex(a => a>=USERQ) : -1;
+  const prevIdx = USERQ!=null && TOT>0 ? acc.findIndex(a => a>=USERQ) : -1;
   const setN = (i, d) => setNom(nom.map((v,j) => j===i ? Math.max(0, Math.min(300, v+d)) : v));
   const segs = [];
   for (let p=1; p<=MAXQ; p++){
@@ -416,7 +417,7 @@ function Simulador(){
         {GLAB.map((g,i)=><span key={g}><i className="sw" style={{background:SCOL[i]}}></i>{g}</span>)}
         <span><i className="sw" style={{background:'#B56576'}}></i>+10% desist.</span>
         <span><i className="sw" style={{background:'#E7E3D6'}}></i>além</span>
-        <span><i className="sw" style={{background:'#8A6D1D'}}></i>você (#{USERQ})</span>
+        {USERQ!=null && <span><i className="sw" style={{background:'#8A6D1D'}}></i>você (#{USERQ})</span>}
       </div>
       <div className="res">
         <div className="tile navy"><div className="k">Último alcançado</div><div className="v">{REACH ? `Cl. ${REACH.cl}` : '—'}</div><div className="s">{REACH ? REACH.nome : ''}</div></div>
@@ -437,8 +438,19 @@ function Simulador(){
         </div>))}
     </div>
     <div className="card"><div className="band">Sua posição</div>
-      <div className="you"><div><div className="cl">Cl. {USER_CL}</div><div style={{fontSize:11.5,color:'#5A6B7B'}}>fila ativa #{USERQ}</div></div>
-        <div className="prev">{prevIdx>=0 ? <>prevista na<br/>{GLAB[prevIdx]}</> : 'além do cenário'}</div></div>
+      <div className="in">
+        <div className="slabel">Digite sua classificação oficial</div>
+        <div className="pick" style={{marginBottom:0}}>
+          <input type="number" min="1" max={ROWS.length} value={draft} placeholder="Ex.: 152"
+            onChange={e=>setDraft(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter'){ const n=parseInt(draft,10); if(n>=1&&n<=ROWS.length) setCl(n);} }} />
+          <button onClick={()=>{ const n=parseInt(draft,10); if(n>=1&&n<=ROWS.length) setCl(n); }}>Simular</button>
+        </div>
+      </div>
+      {cl!=null && <div className="you"><div><div className="cl">Cl. {cl}</div>
+        <div style={{fontSize:11.5,color:'#5A6B7B'}}>{USERQ!=null ? `fila ativa #${USERQ}` : 'fora da fila ativa'}</div>
+        <div style={{fontSize:11.5,color:'#5A6B7B'}}>{me ? me.nome : ''}</div></div>
+        <div className="prev">{USERQ==null ? '—' : TOT===0 ? 'defina as nomeações' : prevIdx>=0 ? <>prevista na<br/>{GLAB[prevIdx]}</> : 'além do cenário'}</div></div>}
     </div>
     <div className="card"><div className="band">Premissas fixas (estimativas)</div>
       <div className="fixed"><span>Alternância Ampla : Hipo</span><span>6 : 1 · ≈ {TOT*6}</span></div>
@@ -453,7 +465,7 @@ function Simulador(){
 const TABS = [['lista','Lista'],['posicoes','Posições'],['projecoes','Projeções'],['simulador','Simulador']];
 function App(){
   const [tab, setTab] = useState('lista');
-  const [cl, setCl] = useState(USER_CL);
+  const [cl, setCl] = useState(null);   // nenhuma posição pré-selecionada
   const pick = c => { setCl(c); setTab('posicoes'); window.scrollTo(0,0); };
   return (<>
     <div className="tabs">{TABS.map(([k,l]) =>
@@ -461,7 +473,7 @@ function App(){
     {tab==='lista' && <Lista onPick={pick} />}
     {tab==='posicoes' && <Posicoes cl={cl} setCl={setCl} />}
     {tab==='projecoes' && <Projecoes cl={cl} />}
-    {tab==='simulador' && <Simulador />}
+    {tab==='simulador' && <Simulador cl={cl} setCl={setCl} />}
   </>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

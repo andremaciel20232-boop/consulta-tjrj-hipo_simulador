@@ -1,19 +1,8 @@
 {
  "v": 2,
- "ult": 4,
+ "ult": 44,
  "reps": 1,
- "over": {
-  "45": "CONVOCADO G6 ✔",
-  "46": "CONVOCADO G6 ✔",
-  "47": "CONVOCADO G6 ✔",
-  "48": "CONVOCADO G7 ✔",
-  "49": "CONVOCADO G7 ✔",
-  "51": "CONVOCADO G7 ✔",
-  "52": "CONVOCADO G7 ✔"
- },
- "rp": {
-  "47": 2,
-  "52": 3
- },
- "updated": "2026-11-03T08:10:19.677Z"
+ "over": {},
+ "rp": {},
+ "updated": "2026-11-03T08:38:24.219Z"
 }

@@ -164,6 +164,12 @@ select.sel{max-width:122px}
 .nav{padding-bottom:env(safe-area-inset-bottom);height:calc(68px + env(safe-area-inset-bottom))}
 .app{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 
+.mreset{margin-top:9px;padding-top:8px;border-top:1px dashed #E1DACB;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px;color:#7A8896}
+.mreset button{font:600 11px Carlito,Calibri,sans-serif;border:0;background:none;color:#B3261E;cursor:pointer;padding:4px 0;text-align:left}
+.mreset button.b3{background:#B3261E;color:#fff;border-radius:7px;padding:6px 10px}
+.mreset span{width:100%;color:#7A3B05}
+.inp::placeholder{color:#B8B2A0}
+
 </style>
 </head>
 <body>
@@ -272,10 +278,31 @@ const CHIPS = [
   ['Migr. · Sai AC · Prov.', r => ['mig','sai','prov'].includes(r.k)],
 ];
 
+// Campo numérico do moderador: ao tocar, o campo esvazia (o valor atual fica de dica);
+// o número digitado só vale ao tocar fora ou em OK/Enter. Valor inválido é descartado.
+function NumField({value, min, max, onCommit, color}){
+  const [txt, setTxt] = useState(String(value));
+  const [focus, setFocus] = useState(false);
+  useEffect(() => { if (!focus) setTxt(String(value)); }, [value, focus]);
+  const commit = () => {
+    const n = parseInt(txt, 10);
+    const ok = n >= min && n <= max;
+    if (ok && n !== value) onCommit(n);
+    setFocus(false); setTxt(String(ok ? n : value));
+  };
+  return <input className="inp" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="off" enterKeyHint="done"
+    style={color ? {color} : undefined} value={txt} placeholder={String(value)}
+    onFocus={() => { setFocus(true); setTxt(''); }}
+    onChange={e => setTxt(e.target.value.replace(/\D/g, '').slice(0, 3))}
+    onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+    onBlur={commit} />;
+}
+
 function ModBar(){
   const {mod} = useData();
   const [open, setOpen] = useState(false);
   const [tk, setTk] = useState('');
+  const [conf, setConf] = useState(false);
   if (!mod.on) return !open
     ? <div className="modlink" role="button" onClick={()=>setOpen(true)}>🔒 Acesso do moderador</div>
     : <div className="modon">
@@ -291,14 +318,19 @@ function ModBar(){
   return (
     <div className="modon">
       <div className="mt"><b>Modo moderador</b><span>{n ? `${n} alteração(ões) não publicada(s)` : 'sem alterações pendentes'}</span></div>
-      <div className="mrow">Última posição oficial <input className="inp" type="number" min="1" max={DATA.length} value={mod.ult} onChange={e=>mod.setUlt(e.target.value)} /></div>
-      <div className="mrow" style={{marginTop:6}}>Reposições feitas pelo tribunal <input className="inp" type="number" min="0" max="20" style={{color:'#674EA7'}} value={mod.reps} onChange={e=>mod.setReps(e.target.value)} /></div>
+      <div className="mrow">Última posição oficial <NumField value={mod.ult} min={1} max={DATA.length} onCommit={mod.setUlt} /></div>
+      <div className="mrow" style={{marginTop:6}}>Reposições feitas pelo tribunal <NumField value={mod.reps} min={0} max={20} onCommit={mod.setReps} color="#674EA7" /></div>
       <div className="mh">Em cada candidato escolha o status. Nos convocados, o seletor roxo “↻” marca em qual reposição ele foi chamado. Nada vale para os outros até tocar em “Publicar”.</div>
       <div className="mb">
-        <button className="b1" onClick={mod.publish} disabled={mod.busy || !n}>{mod.busy ? 'Publicando…' : 'Publicar para todos'}</button>
+        <button className="b1" onClick={()=>mod.publish()} disabled={mod.busy || !n}>{mod.busy ? 'Publicando…' : 'Publicar para todos'}</button>
         <button onClick={mod.discard} disabled={!n || mod.busy}>Descartar</button>
         <button onClick={mod.logout}>Sair</button>
       </div>
+      <div className="mreset">{!conf
+        ? <button onClick={()=>setConf(true)} disabled={mod.busy}>↺ Restaurar dados da planilha (desfaz tudo que foi publicado)</button>
+        : <><span>Isso volta todos os status, reposições e a última posição oficial para a planilha de 30/10. Confirmar?</span>
+            <button className="b3" onClick={()=>{setConf(false); mod.reset();}}>Sim, restaurar para todos</button>
+            <button onClick={()=>setConf(false)}>Cancelar</button></>}</div>
       {mod.msg && <div className={'modmsg ' + (mod.ok ? 'ok' : 'err')}>{mod.msg}</div>}
     </div>);
 }
@@ -574,7 +606,7 @@ function Simulador({cl, setCl}){
           <div className="q" style={{background:'#674EA7',color:'#fff'}}><b>{PEND}</b><small>{PEND===1?'pendente':'pendentes'}</small></div></div>
         <div style={{fontSize:10.5,color:'#7A8896',marginTop:9,lineHeight:1.35}}>Cada pendente é uma vaga que o Tribunal ainda vai repor, e por isso avança a fila. Contam só os candidatos que já foram chamados (até a Cl. {ult}). PROV. ANAL entram apenas quando confirmados como Desistência TD. Sai AC não entra na conta: a contagem já começa a partir da Cl. 2 (Shanti).</div></div>
       <div className="cd"><div className="lab">Nº de convocações realizadas · (G1-G{lastG+2})</div>
-        <div className="grp5" style={{gridTemplateColumns:`repeat(auto-fit,minmax(52px,1fr))`}}>
+        <div className="grp5" style={{gridTemplateColumns:`repeat(auto-fit,minmax(40px,1fr))`}}>
           {shown.map((g,i) => <div key={g}><b>{counts[i]}</b><small>{g}</small></div>)}<div className="tt"><b>{totG}</b><small>total</small></div></div></div>
       <div className="cd"><div className="lab">Simular novas convocações · {labs.length ? `(${labs[0]}-${labs[labs.length-1]})` : ''}</div>
         {labs.length===0 && <div className="empnote">Todas as chamadas até a G12 já foram realizadas.</div>}
@@ -664,7 +696,9 @@ function App(){
       } catch(e) { setOk(false); setMsg(e.message || 'Erro ao entrar.'); }
       finally { setBusy(false); }
     },
-    publish: async () => {
+    reset: () => mod.publish(true),
+    publish: async (resetAll) => {
+      resetAll = resetAll === true;
       setBusy(true); setMsg('');
       try {
         const url = `https://api.github.com/repos/${REPOS}/contents/${FILE}`;
@@ -673,18 +707,18 @@ function App(){
           const g = await fetch(url + '?ref=main&t=' + Date.now(), {headers: GH(token), cache:'no-store'});
           if (g.ok) { const j = await g.json(); sha = j.sha; try { cur = JSON.parse(b64d(j.content)); } catch(e) {} }
           else if (g.status !== 404) throw new Error(g.status===401||g.status===403 ? 'Sem permissão para publicar. Verifique o token.' : `Falha ao ler o arquivo (${g.status}).`);
-          const over2 = cleanOver({...(cur.over || {}), ...pending});
-          const rp2 = cleanRp({...(cur.rp || {}), ...pendRp});
+          const over2 = resetAll ? {} : cleanOver({...(cur.over || {}), ...pending});
+          const rp2 = resetAll ? {} : cleanRp({...(cur.rp || {}), ...pendRp});
           Object.keys(rp2).forEach(k => { if (!(over2[k] || BASE[k]).includes('CONVOCADO')) delete rp2[k]; });   // reposição só vale para convocado
-          const body = {v:2, ult: ultP != null ? ultP : (clampN(cur.ult,1,DATA.length) || remote.ult),
-            reps: repsP != null ? repsP : (clampN(cur.reps,0,20) != null ? clampN(cur.reps,0,20) : remote.reps),
+          const body = {v:2, ult: resetAll ? ULT0 : ultP != null ? ultP : (clampN(cur.ult,1,DATA.length) || remote.ult),
+            reps: resetAll ? REPS0 : repsP != null ? repsP : (clampN(cur.reps,0,20) != null ? clampN(cur.reps,0,20) : remote.reps),
             over: over2, rp: rp2, updated: new Date().toISOString()};
           const p = await fetch(url, {method:'PUT', headers: {...GH(token), 'Content-Type':'application/json'},
             body: JSON.stringify({message:'Atualiza status (moderador)', content: b64e(JSON.stringify(body, null, 1)), sha, branch:'main'})});
           if (p.ok) {
             setRemote({over: over2, rp: rp2, ult: body.ult, reps: body.reps, updated: body.updated});
             setPending({}); setPendRp({}); setUltP(null); setRepsP(null);
-            setOk(true); setMsg('Publicado! Aparece para todos em cerca de 1 minuto.'); return;
+            setOk(true); setMsg(resetAll ? 'Dados da planilha restaurados para todos (cerca de 1 minuto).' : 'Publicado! Aparece para todos em cerca de 1 minuto.'); return;
           }
           if (p.status !== 409 && p.status !== 422) throw new Error(p.status===401||p.status===403||p.status===404 ? 'Sem permissão para publicar. Verifique o token.' : `Falha ao publicar (${p.status}).`);
         }

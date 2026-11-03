@@ -231,7 +231,8 @@ const cleanRp = o => { const out = {}; Object.keys(o||{}).forEach(k => {
   const cl = +k, v = parseInt(o[k],10); if (BASE[cl]!=null && v>=0 && v<=20 && v!==BASEREP[cl]) out[cl] = v; }); return out; };
 
 // POSIÇÃO EFETIVA (azul) = classificação − (convocados + desist. TD + migrações + Sai AC) à frente.
-//   Os PROV. ANAL à frente continuam contados até o moderador mudá-los para "Desistência via TD".
+//   Os PROV. ANAL à frente continuam contados até o moderador mudá-los para "Desistência via TD"
+//   — exceto o PROV. ANAL que é o último chamado oficial (Cl. = última oficial): já foi convocado e conta como saída.
 // FILA ATIVA (#) = melhor cenário: contagem corrida de quem está "Na fila ativa" (os PROV. ANAL já contam como desistência).
 // SIMULADOR = parte da posição efetiva (fila efetiva: inclui os prováveis ainda não confirmados).
 // REPOSIÇÕES PENDENTES = migrações + desistências TD (só até a última posição oficial) − reposições feitas.
@@ -241,14 +242,15 @@ function build(over, rp, ult, repsInput){
   const rows = DATA.map(r => {
     const status = over[r.cl] || r.status;
     const k = kind(status);
-    const fila = status === 'Na fila ativa' || k === 'prov';        // quem ainda está na fila (PROV. ANAL só sai quando confirmado)
+    const ultSaida = k === 'prov' && r.cl === ult;                  // último chamado oficial (PROV. ANAL): já foi convocado, conta como saída
+    const fila = (status === 'Na fila ativa' || k === 'prov') && !ultSaida;   // quem ainda está na fila (PROV. ANAL só sai quando confirmado)
     const rep = k === 'conv' ? ((r.cl in rp) ? rp[r.cl] : (r.rep || 0)) : 0;
     if (rep > maxRep) maxRep = rep;
-    const inq = !OUTS(status);                                        // presente na fila efetiva (inclui prováveis e pendências TD)
+    const inq = !OUTS(status) && !ultSaida;                                        // presente na fila efetiva (inclui prováveis e pendências TD)
     const pe = inq ? r.cl - out : null;
     if (!inq) out++;
     // fn = FILA ATIVA (melhor cenário): prováveis contam como se já tivessem desistido
-    return {...r, status, fila, pe, fn: status === 'Na fila ativa' ? ++fn : null, k, rep};
+    return {...r, status, fila, ultSaida, pe, fn: status === 'Na fila ativa' ? ++fn : null, k, rep};
   });
   const qmap = {}; let qn = 0; rows.forEach(r => { if (r.pe != null) { qmap[r.pe] = r; qn++; } });
   const reps = Math.max(repsInput, maxRep);          // o contador nunca fica abaixo da maior reposição marcada
@@ -424,14 +426,15 @@ function Posicoes({cl, setCl}){
   const idx = ROWS.findIndex(r => r.cl===cl);
   const r = idx>=0 ? ROWS[idx] : null;
   const ahead = r ? ROWS.slice(0, idx) : [];
-  const cnt = k => ahead.filter(x => x.k===k).length;
+  const nUlt = ahead.filter(x => x.ultSaida).length;      // último chamado oficial (PROV.) já conta como saída
+  const cnt = k => ahead.filter(x => x.k===k && !x.ultSaida).length;
   const nFila = ahead.filter(x => x.fila && x.k!=='prov').length;
-  const out = cnt('conv') + cnt('desist') + cnt('mig') + cnt('sai');   // PROV. ANAL ainda não saiu: só desconta quando confirmado
+  const out = cnt('conv') + nUlt + cnt('desist') + cnt('mig') + cnt('sai');   // PROV. ANAL ainda não saiu: só desconta quando confirmado
   const tot = ahead.length || 1;
   const seg = (n, c) => <i style={{width:`${n/tot*100}%`, background:c}} />;
   const pct = r && r.fila ? Math.round(r.pe/ROWS.length*100) : 0;
   const ang = r && r.fn!=null ? Math.round(r.fn/FNMAX*360) : 0;
-  const tiles = [['#1F3B57','#EEF2F6',nFila,'na fila à frente'],['#2E9E5B','#EAF7EE',cnt('conv'),'convocados à frente'],
+  const tiles = [['#1F3B57','#EEF2F6',nFila,'na fila à frente'],['#2E9E5B','#EAF7EE',cnt('conv')+nUlt,'convocados à frente'],
     ['#D64545','#FDEDED',cnt('desist'),'desist. TD à frente ❌'],['#2E5AAC','#EAF1FC',cnt('mig'),'migração à frente ↔️'],
     ['#E8731A','#FFF1E2',cnt('sai'),'Sai AC à frente'],['#E8731A','#FFF1E2',cnt('prov'),'PROV. ANAL à frente ⚠️']];
   const pn = cnt('pend');
@@ -444,7 +447,7 @@ function Posicoes({cl, setCl}){
     {!r && <div className="cd emp"><div className="ic">◎</div>Digite sua classificação oficial (1 a {ROWS.length}) e toque em <b>Consultar</b> para ver suas posições.</div>}
     {r && <>
       <div className="namecard"><div className="l">★ Candidato consultado</div><div className="nm2">{r.nome}</div>
-        <span className="stchip" style={{color:sk[2],borderColor:sk[4]}}>{r.k==='prov' ? 'PROV. ANAL ⚠️ · aguardando confirmação' : r.fila ? 'Candidato aguardando na fila ativa' : chipLabel(r.status)}</span></div>
+        <span className="stchip" style={{color:sk[2],borderColor:sk[4]}}>{r.ultSaida ? 'Último chamado oficial · PROV. ANAL ⚠️' : r.k==='prov' ? 'PROV. ANAL ⚠️ · aguardando confirmação' : r.fila ? 'Candidato aguardando na fila ativa' : chipLabel(r.status)}</span></div>
       <div className="tk"><div className="cols">
         <div className="col c1"><div className="l">Posição oficial FGV</div><div className="v">{r.cl}</div><div className="u">de {ROWS.length} aprovados</div></div>
         <div className="col c2"><div className="l">Posição efetiva</div><div className="v">{r.fila ? r.pe : '—'}</div>
@@ -462,13 +465,14 @@ function Posicoes({cl, setCl}){
         <div className="ringtx"><div className="a">Fila ativa</div><div className="b">Faltam <b>{nFila}</b> candidatos à sua frente<br/><span className="g">sua melhor posição</span></div></div></div></div>}
       {r.fila && <div className="cd"><div className="lab">Como chegamos à posição efetiva</div>
         <div className="eq"><span>Oficial <b>{r.cl}</b></span><span style={{color:'#B3261E',fontWeight:700}}>− {out} saídas à frente</span><span className="r" style={{fontSize:15}}>= <b>{r.pe}</b></span></div>
-        <div className="stack">{seg(nFila,'#1F3B57')}{seg(cnt('conv'),'#2E9E5B')}{seg(cnt('desist'),'#D64545')}{seg(cnt('mig'),'#2E5AAC')}{seg(cnt('sai'),'#E8731A')}{seg(cnt('prov'),'#F3A15B')}{seg(pn,'#E0B100')}</div>
+        <div className="stack">{seg(nFila,'#1F3B57')}{seg(cnt('conv')+nUlt,'#2E9E5B')}{seg(cnt('desist'),'#D64545')}{seg(cnt('mig'),'#2E5AAC')}{seg(cnt('sai'),'#E8731A')}{seg(cnt('prov'),'#F3A15B')}{seg(pn,'#E0B100')}</div>
         <div className="pm" style={{margin:0}}><span>{ahead.length} candidatos à frente da Cl. {r.cl}</span><span></span></div>
         <div className="tiles">{tiles.map(([c,bg,v,t]) => <div key={t} className="tile" style={{background:bg,borderColor:c}}><b style={{color:c}}>{v}</b><span>{t}</span></div>)}</div>
         {reps>0 && <div className="reptile"><b>{reps}</b><span>{reps===1 ? 'reposição feita' : 'reposições feitas'} pelo Tribunal <i>({reps===1 ? 'já incluída' : 'já incluídas'} nos {totConv} convocados - não descontam duas vezes)</i></span></div>}
+        {nUlt>0 && <div className="pend" style={{background:'#EAF7EE',color:'#1E6B3A',borderColor:'#8FD0A8'}}>✔ Último chamado oficial (Cl. {ahead.find(x=>x.ultSaida).cl}, PROV. ANAL) já contado como saída</div>}
         <div className="pend">Pendências TD ⏳ ({pn} {pn===1 ? 'candidato' : 'candidatos'} à frente)</div>
         {cnt('prov')>0 && <div className="pend pv">PROV. ANAL ⚠️ ({cnt('prov')} {cnt('prov')===1 ? 'candidato' : 'candidatos'} à frente) · ainda contados até o moderador confirmar</div>}</div>}
-      {!r.fila && <div className="cd emp" style={{padding:'16px'}}>Não se aplica: este candidato está fora da fila ativa ({chipLabel(r.status)}).</div>}
+      {!r.fila && <div className="cd emp" style={{padding:'16px'}}>Não se aplica: este candidato está fora da fila ativa ({r.ultSaida ? 'último chamado oficial, já convocado' : chipLabel(r.status)}).</div>}
       <div className="cd"><div className="lab">Desempate · edital item 14</div>
         <div className="kv"><span>Nota final</span><b>{fmt(r.nota)}</b></div>
         <div className="kv"><span>Português · Legisl. · Específicos</span><b>{fmt(r.port)} · {fmt(r.legis)} · {fmt(r.esp)}</b></div>
@@ -604,7 +608,7 @@ function Simulador({cl, setCl}){
           <div className="q" style={{background:'#FDEDED',color:'#D64545'}}><b>{desN}</b><small>desist. TD ❌</small></div><span>−</span>
           <div className="q" style={{background:'#EFEAF8',color:'#674EA7'}}><b>{reps}</b><small>{reps===1?'reposição feita':'reposições feitas'} ↻</small></div><span>=</span>
           <div className="q" style={{background:'#674EA7',color:'#fff'}}><b>{PEND}</b><small>{PEND===1?'pendente':'pendentes'}</small></div></div>
-        <div style={{fontSize:10.5,color:'#7A8896',marginTop:9,lineHeight:1.35}}>Cada pendente é uma vaga que o Tribunal ainda vai repor, e por isso avança a fila. Contam só os candidatos que já foram chamados (até a Cl. {ult}). PROV. ANAL entram apenas quando confirmados como Desistência TD. Sai AC não entra na conta: a contagem já começa a partir da Cl. 2 (Shanti).</div></div>
+        <div style={{fontSize:10.5,color:'#7A8896',marginTop:9,lineHeight:1.35}}>Cada pendente é uma vaga que o Tribunal ainda vai repor, e por isso avança a fila. Contam só os candidatos que já foram chamados (até a Cl. {ult}). PROV. ANAL entram apenas quando confirmados como Desistência TD (exceto o último chamado oficial, que já conta como saída). Sai AC não entra na conta: a contagem já começa a partir da Cl. 2 (Shanti).</div></div>
       <div className="cd"><div className="lab">Nº de convocações realizadas · (G1-G{lastG+2})</div>
         <div className="grp5" style={{gridTemplateColumns:`repeat(auto-fit,minmax(40px,1fr))`}}>
           {shown.map((g,i) => <div key={g}><b>{counts[i]}</b><small>{g}</small></div>)}<div className="tt"><b>{totG}</b><small>total</small></div></div></div>

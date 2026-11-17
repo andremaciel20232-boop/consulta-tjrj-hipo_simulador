@@ -1,8 +1,22 @@
 {
  "v": 2,
- "ult": 44,
+ "ult": 58,
  "reps": 1,
- "over": {},
+ "over": {
+  "45": "CONVOCADO G6 ✔",
+  "46": "CONVOCADO G6 ✔",
+  "47": "CONVOCADO G6 ✔",
+  "48": "CONVOCADO G6 ✔",
+  "49": "CONVOCADO G6 ✔",
+  "51": "CONVOCADO G6 ✔",
+  "52": "CONVOCADO G6 ✔",
+  "53": "CONVOCADO G6 ✔",
+  "54": "CONVOCADO G6 ✔",
+  "55": "CONVOCADO G6 ✔",
+  "56": "CONVOCADO G6 ✔",
+  "57": "CONVOCADO G6 ✔",
+  "58": "CONVOCADO G6 ✔"
+ },
  "rp": {},
- "updated": "2026-11-03T08:48:09.933Z"
+ "updated": "2026-11-17T23:42:36.394Z"
 }
